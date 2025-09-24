@@ -1,0 +1,23 @@
+bundle:
+  name: my-dataproj
+
+resources:
+  jobs:
+    example-etl:
+      name: "Example ETL Job"
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "2"
+      tasks:
+        - task_key: etl_task
+          spark_python_task:
+            python_file: src/etl.py
+          environment_key: default
+
+targets:
+  dev:
+    mode: development
+    default: true
+  prod:
+    mode: production

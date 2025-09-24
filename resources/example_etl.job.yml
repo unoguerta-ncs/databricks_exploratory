@@ -1,0 +1,8 @@
+name: "Example ETL Job"
+tasks:
+  - task_key: etl_task
+    spark_python_task:
+      python_file: src/etl.py
+    compute:
+      # Run on Databricks serverless
+      serverless: {}
