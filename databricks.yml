@@ -4,7 +4,10 @@ bundle:
 resources:
   jobs:
     example-etl:
-      name: "Example ETL Job"
+      name: "Example ETL Job (rerun)"
+      parameters:
+        - name: run_date
+          default: "2025-09-23"
       environments:
         - environment_key: default
           spec:
@@ -13,6 +16,9 @@ resources:
         - task_key: etl_task
           spark_python_task:
             python_file: src/etl.py
+            parameters:
+              - "--run-date"
+              - "{{job.parameters.run_date}}"
           environment_key: default
 
 targets:

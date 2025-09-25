@@ -1,4 +1,4 @@
-name: "Example ETL Job"
+name: "Example ETL Job (rerun)"
 tasks:
   - task_key: etl_task
     spark_python_task:
