@@ -7,7 +7,7 @@ resources:
       name: "Example ETL Job (rerun)"
       parameters:
         - name: run_date
-          default: "2025-09-23"
+          default: "2025-09-29"
       environments:
         - environment_key: default
           spec:
