@@ -1,8 +1,14 @@
-name: "Example ETL Job (rerun)"
+﻿name: "Example ETL Job (rerun)"
+parameters:
+  - name: run_date
+    default: "2025-09-29"
 tasks:
   - task_key: etl_task
     spark_python_task:
       python_file: src/etl.py
+      parameters:
+        - "--run-date"
+        - "{{job.parameters.run_date}}"
     compute:
       # Run on Databricks serverless
       serverless: {}
