@@ -1,4 +1,5 @@
 import logging
+from datetime import date
 
 import click
 from pyspark.sql import SparkSession
@@ -37,7 +38,12 @@ def run_etl(
 
 
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
-@click.option("--run-date", required=True, help="Run date to process (YYYY-MM-DD)")
+@click.option(
+    "--run-date",
+    required=False,
+    default=None,
+    help="Run date to process (YYYY-MM-DD). Defaults to today's date if omitted.",
+)
 @click.option(
     "--raw-base-path",
     default=RAW_BASE_PATH,
@@ -59,6 +65,9 @@ def run_etl(
 def cli(run_date: str, raw_base_path: str, processed_base_path: str, input_filename: str) -> None:
     """Entrypoint for running the ETL job from the CLI."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    # Handle unresolved template values or missing run_date by defaulting to today's date.
+    if not run_date or str(run_date).strip().startswith("{{"):
+        run_date = date.today().strftime("%Y-%m-%d")
     logging.info(
         "CLI invoking run_etl with run_date=%s, raw_base_path=%s, processed_base_path=%s, input_filename=%s",
         run_date,
@@ -70,4 +79,8 @@ def cli(run_date: str, raw_base_path: str, processed_base_path: str, input_filen
 
 
 if __name__ == "__main__":
-    cli()
+    try:
+        cli(standalone_mode=False)
+    except SystemExit as exc:
+        if exc.code != 0:
+            raise
