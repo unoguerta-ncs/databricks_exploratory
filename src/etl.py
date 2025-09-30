@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 
 import click
 from pyspark.sql import SparkSession
@@ -59,6 +59,13 @@ def run_etl(
 def cli(run_date: str, raw_base_path: str, processed_base_path: str, input_filename: str) -> None:
     """Entrypoint for running the ETL job from the CLI."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.info(
+        "CLI invoking run_etl with run_date=%s, raw_base_path=%s, processed_base_path=%s, input_filename=%s",
+        run_date,
+        raw_base_path,
+        processed_base_path,
+        input_filename,
+    )
     run_etl(run_date, raw_base_path, processed_base_path, input_filename)
 
 
