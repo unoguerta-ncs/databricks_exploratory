@@ -11,30 +11,42 @@ This version performs light processing on input.csv and writes a Delta output.
 from datetime import date
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, when
+from pyspark.sql.functions import col
+from typing import Any, Optional
 
-# Ensure bundled source modules (src/) are importable when running as a notebook task
 import sys
-try:
-    if "dbutils" in globals():
-        _nb_path = dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().get()
-        # _nb_path looks like: /Workspace/.../.bundle/<bundle>/<target>/files/notebooks/etl_notebook
-        if "/notebooks" in _nb_path:
-            _files_root = "/Workspace" + _nb_path.split("/notebooks", 1)[0]
-            _src_dir = _files_root + "/src"
-            if _src_dir not in sys.path:
-                sys.path.insert(0, _src_dir)
-except Exception:
-    # Non-fatal: fall back to default sys.path
-    pass
 
-from param_utils import get_param
-from etl import run_etl, RAW_BASE_PATH, PROCESSED_BASE_PATH
+# Make sure dbutils is defined for static analysis and guarded at runtime
+dbutils: Any = globals().get("dbutils") if "dbutils" in globals() else None
+
+# Inline minimal resolver and base paths to avoid cross-import issues in notebook tasks
+RAW_BASE_PATH = "/Volumes/workspace/default/raw"
+PROCESSED_BASE_PATH = "/Volumes/workspace/default/processed"
+
+
+def _looks_like_template(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    s = str(value).strip()
+    return s.startswith("{{") and s.endswith("}}")
+
+
+def get_param(spark, env: str, key: str, explicit: Optional[str] = None, default: Optional[str] = None):
+    if explicit and not _looks_like_template(explicit):
+        return explicit
+    try:
+        df = spark.read.table("workspace.default.control_parameters")
+        row = df.filter((df.env == env) & (df.key == key)).select("value").first()
+        if row:
+            return row.value
+    except Exception:
+        pass
+    return default
 
 
 def _get_widget_or_none(name: str):
     try:
-        if "dbutils" in globals():
+        if dbutils is not None:
             return dbutils.widgets.get(name)
     except Exception:
         return None
@@ -99,7 +111,7 @@ print(f"Read {df.count()} rows; writing {df_processed.count()} string-only rows 
 
 # If output path exists but isn't a Delta table (no _delta_log), remove it to avoid Delta write errors
 try:
-    if "dbutils" in globals():
+    if dbutils is not None:
         try:
             files = dbutils.fs.ls(output_path)
             has_delta_log = any(f.name.rstrip("/") == "_delta_log" for f in files)
