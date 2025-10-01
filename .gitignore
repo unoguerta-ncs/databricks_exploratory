@@ -1,0 +1,6 @@
+# Ignore local Databricks project scaffolding
+my_project/
+
+# Ignore temporary scratch file from IDE
+tmp_show
+

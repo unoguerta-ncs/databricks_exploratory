@@ -4,7 +4,12 @@ bundle:
 resources:
   jobs:
     example-etl:
-      name: "Example ETL Job"
+      name: "Example ETL Job (with control table)"
+      parameters:
+        - name: run_date
+          default: "{{ current_time.strftime('%Y-%m-%d') }}"
+        - name: env
+          default: "dev"
       environments:
         - environment_key: default
           spec:
@@ -13,7 +18,20 @@ resources:
         - task_key: etl_task
           spark_python_task:
             python_file: src/etl.py
+            parameters:
+              - "--run-date"
+              - "{{job.parameters.run_date}}"
+              - "--env"
+              - "{{job.parameters.env}}"
           environment_key: default
+        - task_key: etl_notebook
+          depends_on:
+            - task_key: etl_task
+          notebook_task:
+            notebook_path: notebooks/etl_notebook.py
+            base_parameters:
+              run_date: "{{job.parameters.run_date}}"
+              env: "{{job.parameters.env}}"
 
 targets:
   dev:
