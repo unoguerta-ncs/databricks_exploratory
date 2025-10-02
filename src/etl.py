@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 from datetime import date
 
 import click
@@ -31,27 +31,10 @@ def run_etl(
     # Ensure per-run_date subfolders: <processed>/<run_date>/Python and /Notebook
     parent_date_dir = f"{processed_base_path}/{run_date}"
 
-    # If an older run created a Delta table at <processed>/<run_date>, remove it to allow subfolders
+    # Ensure parent date directory can hold subfolders (remove if it's a Delta table)
     try:
-        # Try to get dbutils in both notebook and job contexts
-        try:
-            dbutils  # type: ignore[name-defined]
-        except NameError:
-            from pyspark.dbutils import DBUtils  # type: ignore
-
-            dbutils = DBUtils(spark)  # type: ignore
-
-        try:
-            files = dbutils.fs.ls(parent_date_dir)  # type: ignore
-            has_delta_log = any(f.name.rstrip("/") == "_delta_log" for f in files)
-            if has_delta_log:
-                logging.info(
-                    "Parent path %s is a Delta table from previous runs; removing to enable subfolders",
-                    parent_date_dir,
-                )
-                dbutils.fs.rm(parent_date_dir, True)  # type: ignore
-        except Exception:
-            pass
+        from param_utils import prepare_parent_date_dir  # lazy import to avoid circular deps
+        prepare_parent_date_dir(spark, parent_date_dir)
     except Exception:
         pass
 
