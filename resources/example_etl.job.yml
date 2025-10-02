@@ -21,7 +21,7 @@ tasks:
     depends_on:
       - task_key: etl_task
     notebook_task:
-      notebook_path: notebooks/etl_notebook.py
+      notebook_path: notebooks/etl_notebook.ipynb
       base_parameters:
         run_date: "{{job.parameters.run_date}}"
         env: "{{job.parameters.env}}"
