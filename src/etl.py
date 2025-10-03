@@ -120,21 +120,8 @@ def cli(run_date: str, env: str, raw_base_path: str, processed_base_path: str, i
         default="input.csv",
     )
 
-    # Share resolved parameters with downstream tasks (Notebook) without widgets
-    try:
-        try:
-            dbutils  # type: ignore[name-defined]
-        except NameError:
-            from pyspark.dbutils import DBUtils  # type: ignore
-            dbutils = DBUtils(spark)  # type: ignore
-        dbutils.jobs.taskValues.set(key="env", value=env)  # type: ignore
-        dbutils.jobs.taskValues.set(key="run_date", value=run_date)  # type: ignore
-        dbutils.jobs.taskValues.set(key="raw_base_path", value=raw_base_path)  # type: ignore
-        dbutils.jobs.taskValues.set(key="processed_base_path", value=processed_base_path)  # type: ignore
-        dbutils.jobs.taskValues.set(key="input_filename", value=input_filename)  # type: ignore
-    except Exception:
-        # Best-effort; continue even if jobs API isn't available
-        pass
+    # Note: Notebook now reads parameters directly from the control table,
+    # so no cross-task parameter handoff is necessary here.
     logging.info(
         "CLI invoking run_etl with env=%s, run_date=%s, raw_base_path=%s, processed_base_path=%s, input_filename=%s",
         env,
