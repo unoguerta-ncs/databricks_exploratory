@@ -103,26 +103,20 @@ def cli(run_date: str, env: str, raw_base_path: str, processed_base_path: str, i
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     spark = SparkSession.builder.getOrCreate()
     # Resolve run_date with priority: explicit -> control table -> today's date
-    explicit_run_date = None if (not run_date or str(run_date).strip().startswith("{{")) else run_date
     run_date = get_param(
         spark,
         env=env,
         key="run_date",
-        explicit=explicit_run_date,
+        explicit=run_date if run_date else None,
         default=date.today().strftime("%Y-%m-%d"),
     )
 
     # Resolve input filename with priority: explicit -> control table -> default
-    # Treat the built-in default ("input.csv") as non-explicit so control table can override
-    if not input_filename or str(input_filename).strip().startswith("{{") or input_filename == "input.csv":
-        explicit_input_filename = None
-    else:
-        explicit_input_filename = input_filename
     input_filename = get_param(
         spark,
         env=env,
         key="input_filename",
-        explicit=explicit_input_filename,
+        explicit=input_filename if input_filename else None,
         default="input.csv",
     )
 
