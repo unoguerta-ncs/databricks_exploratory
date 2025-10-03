@@ -10,6 +10,8 @@ resources:
           default: "{{ current_time.strftime('%Y-%m-%d') }}"
         - name: env
           default: "dev"
+        - name: input_filename
+          default: "input.csv"
       environments:
         - environment_key: default
           spec:
@@ -23,6 +25,8 @@ resources:
               - "{{job.parameters.run_date}}"
               - "--env"
               - "{{job.parameters.env}}"
+              - "--input-filename"
+              - "{{job.parameters.input_filename}}"
           environment_key: default
         - task_key: etl_notebook
           depends_on:
@@ -32,6 +36,7 @@ resources:
             base_parameters:
               run_date: "{{job.parameters.run_date}}"
               env: "{{job.parameters.env}}"
+              input_filename: "{{job.parameters.input_filename}}"
 
 targets:
   dev:
