@@ -7,7 +7,7 @@ resources:
       name: "Example ETL Job (with control table)"
       parameters:
         - name: run_date
-          default: "{{ current_time.strftime('%Y-%m-%d') }}"
+          default: ""
         - name: env
           default: "dev"
         - name: input_filename
