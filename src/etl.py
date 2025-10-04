@@ -17,13 +17,13 @@ def run_etl(
     input_filename: str = "input.csv",
 ) -> None:
     """Execute the ETL flow for the provided parameters."""
-    logging.info(
-        "Starting ETL run for run-date=%s (raw_base_path=%s, processed_base_path=%s, input_filename=%s)",
-        run_date,
-        raw_base_path,
-        processed_base_path,
-        input_filename,
-    )
+    # logging.info(
+    #     "Starting ETL run for run-date=%s (raw_base_path=%s, processed_base_path=%s, input_filename=%s)",
+    #     run_date,
+    #     raw_base_path,
+    #     processed_base_path,
+    #     input_filename,
+    # )
 
     spark = SparkSession.builder.getOrCreate()
 
@@ -56,12 +56,12 @@ def run_etl(
 
     output_path = f"{parent_date_dir}/Python"
 
-    logging.info("Reading input from %s", input_path)
+    # logging.info("Reading input from %s", input_path)
     df = spark.read.option("header", True).csv(input_path)
 
     df_filtered = df.filter(df["value"].isNotNull())
 
-    logging.info("Writing filtered output to %s", output_path)
+    # logging.info("Writing filtered output to %s", output_path)
     df_filtered.write.format("delta").mode("overwrite").save(output_path)
 
 
@@ -119,14 +119,14 @@ def main():
         default="input.csv",
     )
 
-    logging.info(
-        "Invoking run_etl with env=%s, run_date=%s, raw_base_path=%s, processed_base_path=%s, input_filename=%s",
-        args.env,
-        run_date,
-        args.raw_base_path,
-        args.processed_base_path,
-        input_filename,
-    )
+    # logging.info(
+    #     "Invoking run_etl with env=%s, run_date=%s, raw_base_path=%s, processed_base_path=%s, input_filename=%s",
+    #     args.env,
+    #     run_date,
+    #     args.raw_base_path,
+    #     args.processed_base_path,
+    #     input_filename,
+    # )
     run_etl(run_date, args.raw_base_path, args.processed_base_path, input_filename)
 
 
