@@ -1,27 +1,37 @@
-﻿name: "Example ETL Job (with control table)"
-parameters:
-  - name: run_date
-    default: "{{ current_time.strftime('%Y-%m-%d') }}"
-  - name: env
-    default: "dev"
-tasks:
-  - task_key: etl_task
-    spark_python_task:
-      python_file: src/etl.py
+﻿resources:
+  jobs:
+    example_etl:
+      name: "Example ETL Job (with control table)"
       parameters:
-        - "--run-date"
-        - "{{job.parameters.run_date}}"
-        - "--env"
-        - "{{job.parameters.env}}"
-    compute:
-      # Run on Databricks serverless
-      serverless: {}
-      
-  - task_key: etl_notebook
-    notebook_task:
-      notebook_path: notebooks/etl_notebook.ipynb
-      base_parameters:
-        run_date: "{{job.parameters.run_date}}"
-        env: "{{job.parameters.env}}"
-    compute:
-      serverless: {}
+        - name: run_date
+          default: ""
+        - name: env
+          default: "dev"
+        - name: input_filename
+          default: "input.csv"
+
+      tasks:
+        - task_key: etl_task
+          spark_python_task:
+            python_file: ../src/etl.py
+            parameters:
+              - "--run-date"
+              - "{{job.parameters.run_date}}"
+              - "--env"
+              - "{{job.parameters.env}}"
+              - "--input-filename"
+              - "{{job.parameters.input_filename}}"
+          environment_key: serverless
+
+        - task_key: etl_notebook
+          notebook_task:
+            notebook_path: ../notebooks/etl_notebook.ipynb
+            base_parameters:
+              run_date: "{{job.parameters.run_date}}"
+              env: "{{job.parameters.env}}"
+              input_filename: "{{job.parameters.input_filename}}" 
+
+      environments:
+        - environment_key: serverless
+          spec:
+            environment_version: "2"

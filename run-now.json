@@ -1,8 +1,8 @@
 {
-  "job_id": 448251619271718 ,
+  "job_id": 568231396830094 ,
   "job_parameters": {
     "env": "dev",
-    "run_date": "2025-09-27",
+    "run_date": "2025-09-19",
     "input_filename": "input_prd.csv"
   }
 }

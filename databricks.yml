@@ -1,44 +1,13 @@
 ﻿bundle:
   name: my-dataproj
 
-resources:
-  jobs:
-    example-etl:
-      name: "Example ETL Job (with control table)"
-      parameters:
-        - name: run_date
-          default: ""
-        - name: env
-          default: "dev"
-        - name: input_filename
-          default: "input.csv"
-      environments:
-        - environment_key: default
-          spec:
-            environment_version: "2"
-      tasks:
-        - task_key: etl_task
-          spark_python_task:
-            python_file: src/etl.py
-            parameters:
-              - "--run-date"
-              - "{{job.parameters.run_date}}"
-              - "--env"
-              - "{{job.parameters.env}}"
-              - "--input-filename"
-              - "{{job.parameters.input_filename}}"
-          environment_key: default
-        - task_key: etl_notebook
-          notebook_task:
-            notebook_path: notebooks/etl_notebook.ipynb
-            base_parameters:
-              run_date: "{{job.parameters.run_date}}"
-              env: "{{job.parameters.env}}"
-              input_filename: "{{job.parameters.input_filename}}"
+include:
+  - resources/*.yml
 
 targets:
   dev:
     mode: development
     default: true
+
   prod:
     mode: production
