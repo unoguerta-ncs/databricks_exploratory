@@ -29,8 +29,6 @@ resources:
               - "{{job.parameters.input_filename}}"
           environment_key: default
         - task_key: etl_notebook
-          depends_on:
-            - task_key: etl_task
           notebook_task:
             notebook_path: notebooks/etl_notebook.ipynb
             base_parameters:
