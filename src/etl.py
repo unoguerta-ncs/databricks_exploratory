@@ -6,8 +6,9 @@ from pyspark.sql import SparkSession
 from param_utils import get_param
 
 
-RAW_BASE_PATH = "/Volumes/workspace/default/raw"
-PROCESSED_BASE_PATH = "/Volumes/workspace/default/processed"
+# Allow overriding via environment variables; fall back to defaults
+RAW_BASE_PATH = os.getenv("RAW_BASE_PATH", "/Volumes/workspace/default/raw")
+PROCESSED_BASE_PATH = os.getenv("PROCESSED_BASE_PATH", "/Volumes/workspace/default/processed")
 
 
 def run_etl(
@@ -45,16 +46,7 @@ def main():
         default=os.getenv("ENV", "dev"),
         help="Environment key (default from ENV var or 'dev')",
     )
-    parser.add_argument(
-        "--raw-base-path",
-        default=RAW_BASE_PATH,
-        help=f"Base path where raw inputs are stored (default: {RAW_BASE_PATH})",
-    )
-    parser.add_argument(
-        "--processed-base-path",
-        default=PROCESSED_BASE_PATH,
-        help=f"Base path where processed outputs will be written (default: {PROCESSED_BASE_PATH})",
-    )
+    
     parser.add_argument(
         "--input-filename",
         default="input.csv",
@@ -81,9 +73,9 @@ def main():
         default="input.csv",
     )
 
-    run_etl(run_date, args.raw_base_path, args.processed_base_path, input_filename)
+    # Use environment-configured base paths (or defaults) instead of CLI flags
+    run_etl(run_date, RAW_BASE_PATH, PROCESSED_BASE_PATH, input_filename)
 
 
 if __name__ == "__main__":
     main()
-
