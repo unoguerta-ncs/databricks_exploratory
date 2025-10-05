@@ -44,7 +44,8 @@ def run_cmd(cmd: str):
 
 
 def main():
-    today = date.today().strftime("%Y-%m-%d")
+    # today = date.today().strftime("%Y-%m-%d")
+    today = "2025-10-10"
     project_root = Path(__file__).resolve().parent.parent
 
     commands = [
