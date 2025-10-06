@@ -8,7 +8,7 @@
         - name: env
           default: "dev"
         - name: input_filename
-          default: "input.csv"
+          default: ""
 
       tasks:
         - task_key: etl_task

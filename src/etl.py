@@ -15,7 +15,7 @@ def run_etl(
     run_date: str,
     raw_base_path: str = RAW_BASE_PATH,
     processed_base_path: str = PROCESSED_BASE_PATH,
-    input_filename: str = "input.csv",
+    input_filename: str = "",
 ) -> None:
     """Execute the ETL flow for the provided parameters."""
     spark = SparkSession.builder.getOrCreate()
@@ -49,7 +49,7 @@ def main():
     
     parser.add_argument(
         "--input-filename",
-        default="input.csv",
+        default=None,
         help="Name of the input file inside the raw base path (default: input.csv)",
     )
 
@@ -62,7 +62,7 @@ def main():
         env=args.env,
         key="run_date",
         explicit=args.run_date if args.run_date else None,
-        default=date.today().strftime("%Y-%m-%d"),
+        default=None,
     )
 
     input_filename = get_param(
@@ -70,7 +70,7 @@ def main():
         env=args.env,
         key="input_filename",
         explicit=args.input_filename if args.input_filename else None,
-        default="input.csv",
+        default=None,
     )
 
     # Use environment-configured base paths (or defaults) instead of CLI flags
