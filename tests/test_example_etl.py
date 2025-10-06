@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 def run_cmd(cmd: str):
-    print(f"\n🚀 Running: {cmd}")
+    print(f"\nRunning: {cmd}")
     try:
         start = datetime.now()
         result = subprocess.run(
@@ -28,17 +28,17 @@ def run_cmd(cmd: str):
             state = output_json.get("state", {}).get("life_cycle_state", "UNKNOWN")
             result_state = output_json.get("state", {}).get("result_state", "UNKNOWN")
 
-            print(f"✅ SUCCESS — Job ID: {job_id}, Run ID: {run_id}")
-            print(f"⏱ Duration: {duration:.2f}s")
-            print(f"📊 Final State: {state} / {result_state}\n")
+            print(f"SUCCESS — Job ID: {job_id}, Run ID: {run_id}")
+            print(f"Duration: {duration:.2f}s")
+            print(f"Final State: {state} / {result_state}\n")
 
         except json.JSONDecodeError:
-            print("✅ SUCCESS (non-JSON output)")
+            print("SUCCESS (non-JSON output)")
             print(result.stdout)
-            print(f"⏱ Duration: {duration:.2f}s\n")
+            print(f"Duration: {duration:.2f}s\n")
 
     except subprocess.CalledProcessError as e:
-        print("❌ FAILED")
+        print("FAILED")
         print("STDOUT:\n", e.stdout)
         print("STDERR:\n", e.stderr)
 
@@ -49,16 +49,16 @@ def main():
     project_root = Path(__file__).resolve().parent.parent
 
     commands = [
-        # 1️⃣ Basic bundle run (no params)
+        #Basic bundle run (no params)
         "databricks bundle run example_etl",
 
-        # 2️⃣ Bundle run with explicit params
+        #Bundle run with explicit params
         f"databricks bundle run example_etl --target dev --params run_date={date} --params input_filename=input_prd.csv",
 
-        # 3️⃣ Direct job run-now with job_id
+        #Direct job run-now with job_id
         "databricks jobs run-now 568231396830094",
 
-        # 4️⃣ JSON-based run-now call (relative to project root)
+        #JSON-based run-now call (relative to project root)
         f"databricks jobs run-now --json @{project_root / 'run-now.json'}",
     ]
 
@@ -67,9 +67,9 @@ def main():
 
 
 if __name__ == "__main__":
-    print(f"🧪 Databricks Job Test Runner ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})")
+    print(f"Databricks Job Test Runner ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})")
     if sys.platform.startswith("win"):
-        print("🪟 Detected Windows environment")
+        print("Detected Windows environment")
     else:
-        print("🐧 Detected non-Windows environment")
+        print("Detected non-Windows environment")
     main()
