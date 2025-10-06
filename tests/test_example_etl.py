@@ -45,7 +45,7 @@ def run_cmd(cmd: str):
 
 def main():
     # today = date.today().strftime("%Y-%m-%d")
-    today = "2025-10-10"
+    date = "2025-10-10"
     project_root = Path(__file__).resolve().parent.parent
 
     commands = [
@@ -53,7 +53,7 @@ def main():
         "databricks bundle run example_etl",
 
         # 2️⃣ Bundle run with explicit params
-        f"databricks bundle run example_etl --target dev --params run_date={today} --params input_filename=input_prd.csv",
+        f"databricks bundle run example_etl --target dev --params run_date={date} --params input_filename=input_prd.csv",
 
         # 3️⃣ Direct job run-now with job_id
         "databricks jobs run-now 568231396830094",
