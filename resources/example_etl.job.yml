@@ -25,7 +25,7 @@
 
         - task_key: etl_notebook
           notebook_task:
-            notebook_path: ../notebooks/etl_notebook.ipynb
+            notebook_path: ../src/etl_notebook.ipynb
             base_parameters:
               run_date: "{{job.parameters.run_date}}"
               env: "{{job.parameters.env}}"
