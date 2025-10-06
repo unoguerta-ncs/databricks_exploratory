@@ -1,4 +1,4 @@
-﻿resources:
+resources:
   jobs:
     example_etl:
       name: "Example ETL Job (with control table)"
@@ -6,7 +6,7 @@
         - name: run_date
           default: ""
         - name: env
-          default: "dev"
+          default: "${bundle.target}"
         - name: input_filename
           default: ""
 
@@ -35,3 +35,5 @@
         - environment_key: serverless
           spec:
             environment_version: "2"
+
+
