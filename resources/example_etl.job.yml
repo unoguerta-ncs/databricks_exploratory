@@ -9,18 +9,32 @@ resources:
           default: "${bundle.target}"
         - name: input_filename
           default: ""
+        - name: run_date_utc
+          default: ""
 
       tasks:
         - task_key: etl_task
           spark_python_task:
             python_file: ../src/mgfi/fr24/fr24_hourly.py
             parameters:
-              - "--run-date"
-              - "{{job.parameters.run_date}}"
+              - "--run-date-utc"
+              - "{{job.parameters.run_date_utc}}"
               - "--env"
               - "{{job.parameters.env}}"
               - "--input-filename"
               - "{{job.parameters.input_filename}}"
+          environment_key: serverless
+
+        - task_key: b2s_task
+          depends_on:
+            - task_key: etl_task
+          spark_python_task:
+            python_file: ../src/mgfi/fr24_b2s/fr24_bronze_to_silver.py
+            parameters:
+              - "--env"
+              - "{{job.parameters.env}}"
+              - "--run-date-utc"
+              - "{{job.parameters.run_date_utc}}"
           environment_key: serverless
 
       environments:
