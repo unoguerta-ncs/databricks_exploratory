@@ -20,25 +20,45 @@ if not logging.getLogger().hasHandlers():
 logger = logging.getLogger("fr24_b2s")
 
 
-DEFAULT_CATALOG = os.getenv("CATALOG", "mgfi_catalog_test")
-DEFAULT_INPUT_TABLE = f"{DEFAULT_CATALOG}.sandbox.fr24_raw"
-DEFAULT_OUTPUT_TABLE = f"{DEFAULT_CATALOG}.sandbox.fr24_silver"
 UPSTREAM_TASK_KEY = os.getenv("UPSTREAM_TASK_KEY", "etl_task")
+# Control parameter table location for get_param lookups used by resolver
+CONTROL_PARAM_TABLE = os.getenv("CONTROL_PARAM_TABLE", "mgfi_catalog_test.sandbox.control_parameters")
 
 
 def run_bronze_to_silver(
     env: str,
     run_date_utc: Optional[str] = None,
-    input_table: str = DEFAULT_INPUT_TABLE,
-    output_table: str = DEFAULT_OUTPUT_TABLE,
+    input_table: Optional[str] = None,
+    output_table: Optional[str] = None,
+    catalog: Optional[str] = None,
+    schema: Optional[str] = None,
 ):
     spark = SparkSession.builder.getOrCreate()
 
     # Resolve run_date_utc (no default allowed)
-    resolved_run_date_utc = resolve_run_date_utc(spark, env, run_date_utc, UPSTREAM_TASK_KEY)
+    resolved_run_date_utc = resolve_run_date_utc(
+        spark, env, run_date_utc, UPSTREAM_TASK_KEY, CONTROL_PARAM_TABLE
+    )
     logger.info("Using run_date_utc=%s", resolved_run_date_utc)
-    logger.info("Reading bronze table: %s", input_table)
-    df = spark.read.table(input_table)
+    # Resolve table names
+    resolved_input_table = input_table
+    if not resolved_input_table:
+        if not (catalog and schema):
+            raise click.ClickException(
+                "Provide --input-table or both --catalog and --schema to derive input table"
+            )
+        resolved_input_table = f"{catalog}.{schema}.fr24_raw"
+
+    resolved_output_table = output_table
+    if not resolved_output_table:
+        if not (catalog and schema):
+            raise click.ClickException(
+                "Provide --output-table or both --catalog and --schema to derive output table"
+            )
+        resolved_output_table = f"{catalog}.{schema}.fr24_silver"
+
+    logger.info("Reading bronze table: %s", resolved_input_table)
+    df = spark.read.table(resolved_input_table)
 
     # Resolve batch_id from upstream if available (centralized helper)
     batch_id_value = resolve_batch_id(spark, UPSTREAM_TASK_KEY)
@@ -73,9 +93,9 @@ def run_bronze_to_silver(
 
     # Write to silver table
     count = df_out.count()
-    logger.info("Writing %s rows to silver table: %s", count, output_table)
-    df_out.write.format("delta").mode("append").saveAsTable(output_table)
-    logger.info("Write complete: %s", output_table)
+    logger.info("Writing %s rows to silver table: %s", count, resolved_output_table)
+    df_out.write.format("delta").mode("append").saveAsTable(resolved_output_table)
+    logger.info("Write complete: %s", resolved_output_table)
 
 
 @click.command(help="FR24 Bronze-to-Silver filter by run_date_utc")
@@ -101,20 +121,39 @@ def run_bronze_to_silver(
     "--input-table",
     "input_table",
     required=False,
-    default=DEFAULT_INPUT_TABLE,
-    show_default=True,
-    help="Bronze Delta table to read from",
+    default=None,
+    help="Fully-qualified bronze Delta table to read from. If omitted, requires --catalog and --schema",
 )
 @click.option(
     "--output-table",
     "output_table",
     required=False,
-    default=DEFAULT_OUTPUT_TABLE,
-    show_default=True,
-    help="Silver Delta table to append to",
+    default=None,
+    help="Fully-qualified silver Delta table to append to. If omitted, requires --catalog and --schema",
 )
-def main(env, run_date_utc, input_table, output_table):
-    run_bronze_to_silver(env=env, run_date_utc=run_date_utc, input_table=input_table, output_table=output_table)
+@click.option(
+    "--catalog",
+    "catalog",
+    required=False,
+    default=None,
+    help="Unity Catalog to derive default table names",
+)
+@click.option(
+    "--schema",
+    "schema",
+    required=False,
+    default=None,
+    help="Schema to derive default table names",
+)
+def main(env, run_date_utc, input_table, output_table, catalog, schema):
+    run_bronze_to_silver(
+        env=env,
+        run_date_utc=run_date_utc,
+        input_table=input_table,
+        output_table=output_table,
+        catalog=catalog,
+        schema=schema,
+    )
 
 
 if __name__ == "__main__":

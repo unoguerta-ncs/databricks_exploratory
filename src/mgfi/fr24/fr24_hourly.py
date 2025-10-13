@@ -4,6 +4,7 @@ import logging
 import click
 from datetime import date, datetime, timezone
 from pathlib import Path
+from typing import Optional
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, to_timestamp, lit, current_timestamp
 
@@ -19,26 +20,30 @@ if not logging.getLogger().hasHandlers():
     )
 logger = logging.getLogger("fr24_etl")
 
-# Allow overriding via environment variables; fall back to defaults
-MAIN_FILE_PATH = "/Volumes/mgfi_catalog_test/sandbox/"
-RAW_BASE_PATH = os.getenv("RAW_BASE_PATH", MAIN_FILE_PATH + "fr24_bronze_vol")
-PROCESSED_BASE_PATH = os.getenv("PROCESSED_BASE_PATH", MAIN_FILE_PATH)
+# No hardcoded defaults here; paths, catalog, and schema are provided via job/CLI
+# Control parameter table location for get_param lookups
+CONTROL_PARAM_TABLE = os.getenv("CONTROL_PARAM_TABLE", "mgfi_catalog_test.sandbox.control_parameters")
 
 def run_etl(
     run_date: str,
-    raw_base_path: str = RAW_BASE_PATH,
-    processed_base_path: str = PROCESSED_BASE_PATH,
-    input_filename: str = "",
-    output_table: str = "mgfi_catalog_test.sandbox.fr24_raw",
+    raw_base_path: Optional[str] = None,
+    processed_base_path: Optional[str] = None,
+    input_filename: Optional[str] = None,
+    output_table: Optional[str] = None,
     source_system: str = "fr24",
-    catalog: str = None,
-    batch_id: str = None,
-    run_date_utc: str = None,
+    catalog: Optional[str] = None,
+    schema: Optional[str] = None,
+    batch_id: Optional[str] = None,
+    run_date_utc: Optional[str] = None,
 ) -> None:
     spark = SparkSession.builder.getOrCreate()
 
     # Extract Data From Filepath (input_filename provided)
-    input_path = f"{raw_base_path}/{input_filename}"
+    if not raw_base_path:
+        raise click.ClickException("raw_base_path is required (pass --raw-base-path)")
+    if not input_filename:
+        raise click.ClickException("input_filename is required (pass --input-filename or control param)")
+    input_path = f"{raw_base_path.rstrip('/')}/{input_filename.lstrip('/')}"
     logger.info("EXTRACT start: reading file '%s'", input_path)
     df = spark.read.json(input_path)
     logger.info("EXTRACT done: columns=%s", ", ".join(df.columns))
@@ -79,9 +84,14 @@ def run_etl(
     logger.info("TRANSFORM done: projected columns: event_ts, flight_id, callsign, source_system, _source_file, _ingested_at")
 
     # Load to bronze table
-    target_table = output_table if output_table else (
-        f"{catalog}.sandbox.{source_system}_raw" if catalog else "mgfi_catalog_test.sandbox.fr24_raw"
-    )
+    if output_table:
+        target_table = output_table
+    else:
+        if not (catalog and schema):
+            raise click.ClickException(
+                "Provide --output-table or both --catalog and --schema to derive target table"
+            )
+        target_table = f"{catalog}.{schema}.{source_system}_raw"
     logger.info("LOAD start: appending to table '%s'", target_table)
     df_out.write.format("delta").mode("append").saveAsTable(target_table)
     logger.info("LOAD done: wrote to table '%s'", target_table)
@@ -129,9 +139,8 @@ def run_etl(
     "--output-table",
     "output_table",
     required=False,
-    default="mgfi_catalog_test.sandbox.fr24_raw",
-    show_default=True,
-    help="Fully-qualified Delta table to append to",
+    default=None,
+    help="Fully-qualified Delta table to append to. If omitted, requires --catalog and --schema",
 )
 @click.option(
     "--source-system",
@@ -145,9 +154,22 @@ def run_etl(
     "--catalog",
     "catalog",
     required=False,
-    default=os.getenv("CATALOG", "mgfi_catalog_test"),
-    show_default=True,
+    default=None,
     help="Unity Catalog to use when deriving output table name",
+)
+@click.option(
+    "--schema",
+    "schema",
+    required=False,
+    default=None,
+    help="Schema to use when deriving output table name",
+)
+@click.option(
+    "--raw-base-path",
+    "raw_base_path",
+    required=False,
+    default=None,
+    help="Base path containing the input files (e.g. /Volumes/<catalog>/<schema>/fr24_bronze_vol)",
 )
 @click.option(
     "--batch-id",
@@ -163,7 +185,7 @@ def run_etl(
     default=None,
     help="Optional run date in UTC (YYYY-MM-DD) to propagate via task values",
 )
-def main(run_date, env, input_filename, output_table, source_system, catalog, batch_id, run_date_utc):
+def main(run_date, env, input_filename, output_table, source_system, catalog, schema, raw_base_path, batch_id, run_date_utc):
     spark = SparkSession.builder.getOrCreate()
 
     # Resolve run_date and input filename using priority: explicit > control table > default
@@ -173,6 +195,7 @@ def main(run_date, env, input_filename, output_table, source_system, catalog, ba
         key="run_date",
         explicit=run_date if run_date else None,
         default=None,
+        control_table=CONTROL_PARAM_TABLE,
     )
 
     input_filename = get_param(
@@ -181,17 +204,19 @@ def main(run_date, env, input_filename, output_table, source_system, catalog, ba
         key="input_filename",
         explicit=input_filename if input_filename else None,
         default=None,
+        control_table=CONTROL_PARAM_TABLE,
     )
 
     # Use environment-configured base paths (or defaults) and write to the table
     run_etl(
         run_date,
-        RAW_BASE_PATH,
-        PROCESSED_BASE_PATH,
-        input_filename,
+        raw_base_path=raw_base_path,
+        processed_base_path=None,
+        input_filename=input_filename,
         output_table=output_table,
         source_system=source_system,
         catalog=catalog,
+        schema=schema,
         batch_id=batch_id,
         run_date_utc=run_date_utc,
     )

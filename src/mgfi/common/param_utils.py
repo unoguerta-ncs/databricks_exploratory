@@ -12,6 +12,7 @@ def get_param(
     key: str,
     explicit: Optional[str] = None,
     default: Optional[str] = None,
+    control_table: Optional[str] = "",
 ):
     # 1) If the caller provided an explicit value, use it
     if _is_non_empty(explicit):
@@ -19,10 +20,11 @@ def get_param(
 
     # 2) Otherwise try fetch from the shared control table (best-effort)
     try:
-        df = spark.read.table("mgfi_catalog_test.sandbox.control_parameters")
-        row = df.filter((df.env == env) & (df.key == key)).select("value").first()
-        if row:
-            return row.value
+        if _is_non_empty(control_table):
+            df = spark.read.table(control_table)
+            row = df.filter((df.env == env) & (df.key == key)).select("value").first()
+            if row:
+                return row.value
     except Exception:
         # If table doesn't exist or is unreadable, fall through to default
         pass
@@ -37,6 +39,7 @@ def resolve_run_date_utc(
     env: str,
     explicit_run_date_utc: Optional[str] = None,
     upstream_task_key: Optional[str] = None,
+    control_table: Optional[str] = "",
 ) -> str:
     """Resolve run_date_utc with priority order:
 
@@ -72,6 +75,7 @@ def resolve_run_date_utc(
         key="run_date_utc",
         explicit=None,
         default=None,
+        control_table=control_table,
     )
     if _is_non_empty(value):
         return value  # type: ignore[return-value]

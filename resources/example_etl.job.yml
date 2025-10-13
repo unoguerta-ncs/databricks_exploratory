@@ -26,6 +26,12 @@ resources:
           default: ""
         - name: run_date_utc
           default: ""
+        - name: catalog
+          default: "mgfi_catalog_test"
+        - name: schema
+          default: "sandbox"
+        - name: raw_base_path
+          default: "/Volumes/mgfi_catalog_test/sandbox/fr24_bronze_vol"
 
       tasks:
         - task_key: etl_task
@@ -38,6 +44,12 @@ resources:
               - "{{job.parameters.env}}"
               - "--input-filename"
               - "{{job.parameters.input_filename}}"
+              - "--catalog"
+              - "{{job.parameters.catalog}}"
+              - "--schema"
+              - "{{job.parameters.schema}}"
+              - "--raw-base-path"
+              - "{{job.parameters.raw_base_path}}"
           job_cluster_key: std_job_cluster
           max_retries: 1
           min_retry_interval_millis: 10000
@@ -53,6 +65,10 @@ resources:
               - "{{job.parameters.env}}"
               - "--run-date-utc"
               - "{{job.parameters.run_date_utc}}"
+              - "--catalog"
+              - "{{job.parameters.catalog}}"
+              - "--schema"
+              - "{{job.parameters.schema}}"
           job_cluster_key: std_job_cluster
           max_retries: 1
           min_retry_interval_millis: 10000
