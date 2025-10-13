@@ -2,6 +2,21 @@ resources:
   jobs:
     fr24_bronze_to_silver:
       name: "FR24 Bronze to Silver"
+
+      # ✅ Correct schedule placement for DAB v2
+      schedule:
+        quartz_cron_expression: "0 5 * * * ?"
+        timezone_id: "UTC"
+
+      job_clusters:
+        - job_cluster_key: std_job_cluster
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+            data_security_mode: "SINGLE_USER"
+            autotermination_minutes: 30
+
       parameters:
         - name: run_date
           default: ""
@@ -23,7 +38,10 @@ resources:
               - "{{job.parameters.env}}"
               - "--input-filename"
               - "{{job.parameters.input_filename}}"
-          environment_key: serverless
+          job_cluster_key: std_job_cluster
+          max_retries: 1
+          min_retry_interval_millis: 10000
+          timeout_seconds: 0
 
         - task_key: b2s_task
           depends_on:
@@ -35,11 +53,7 @@ resources:
               - "{{job.parameters.env}}"
               - "--run-date-utc"
               - "{{job.parameters.run_date_utc}}"
-          environment_key: serverless
-
-      environments:
-        - environment_key: serverless
-          spec:
-            environment_version: "2"
-
-
+          job_cluster_key: std_job_cluster
+          max_retries: 1
+          min_retry_interval_millis: 10000
+          timeout_seconds: 0
