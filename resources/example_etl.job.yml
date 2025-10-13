@@ -26,6 +26,8 @@ resources:
           default: ""
         - name: run_date_utc
           default: ""
+        - name: source_system
+          default: "fr24"
         - name: catalog
           default: "mgfi_catalog_test"
         - name: schema
@@ -44,6 +46,8 @@ resources:
               - "{{job.parameters.env}}"
               - "--input-filename"
               - "{{job.parameters.input_filename}}"
+              - "--source-system"
+              - "{{job.parameters.source_system}}"
               - "--catalog"
               - "{{job.parameters.catalog}}"
               - "--schema"
@@ -65,6 +69,8 @@ resources:
               - "{{job.parameters.env}}"
               - "--run-date-utc"
               - "{{job.parameters.run_date_utc}}"
+              - "--source-system"
+              - "{{job.parameters.source_system}}"
               - "--catalog"
               - "{{job.parameters.catalog}}"
               - "--schema"

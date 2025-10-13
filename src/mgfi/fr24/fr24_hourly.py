@@ -30,7 +30,7 @@ def run_etl(
     processed_base_path: Optional[str] = None,
     input_filename: Optional[str] = None,
     output_table: Optional[str] = None,
-    source_system: str = "fr24",
+    source_system: Optional[str] = None,
     catalog: Optional[str] = None,
     schema: Optional[str] = None,
     batch_id: Optional[str] = None,
@@ -39,10 +39,6 @@ def run_etl(
     spark = SparkSession.builder.getOrCreate()
 
     # Extract Data From Filepath (input_filename provided)
-    if not raw_base_path:
-        raise click.ClickException("raw_base_path is required (pass --raw-base-path)")
-    if not input_filename:
-        raise click.ClickException("input_filename is required (pass --input-filename or control param)")
     input_path = f"{raw_base_path.rstrip('/')}/{input_filename.lstrip('/')}"
     logger.info("EXTRACT start: reading file '%s'", input_path)
     df = spark.read.json(input_path)
@@ -60,8 +56,8 @@ def run_etl(
     )
 
     # Derive batch/run metadata defaults
-    resolved_batch_id = batch_id or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    resolved_run_date_utc = run_date_utc or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    resolved_batch_id = batch_id or None
+    resolved_run_date_utc = run_date_utc or None
 
     # Cast/derive columns to match target schema
     df_out = (
@@ -84,14 +80,9 @@ def run_etl(
     logger.info("TRANSFORM done: projected columns: event_ts, flight_id, callsign, source_system, _source_file, _ingested_at")
 
     # Load to bronze table
-    if output_table:
-        target_table = output_table
-    else:
-        if not (catalog and schema):
-            raise click.ClickException(
-                "Provide --output-table or both --catalog and --schema to derive target table"
-            )
-        target_table = f"{catalog}.{schema}.{source_system}_raw"
+    target_table = output_table or (
+        f"{catalog}.{schema}.{source_system}_raw" if catalog and schema and source_system else None
+    )
     logger.info("LOAD start: appending to table '%s'", target_table)
     df_out.write.format("delta").mode("append").saveAsTable(target_table)
     logger.info("LOAD done: wrote to table '%s'", target_table)
@@ -163,6 +154,13 @@ def run_etl(
     required=False,
     default=None,
     help="Schema to use when deriving output table name",
+)
+@click.option(
+    "--source-system",
+    "source_system",
+    required=False,
+    default=None,
+    help="Source system identifier used in target table and column",
 )
 @click.option(
     "--raw-base-path",

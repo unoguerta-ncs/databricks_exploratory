@@ -32,30 +32,17 @@ def run_bronze_to_silver(
     output_table: Optional[str] = None,
     catalog: Optional[str] = None,
     schema: Optional[str] = None,
+    source_system: Optional[str] = None,
 ):
     spark = SparkSession.builder.getOrCreate()
 
     # Resolve run_date_utc (no default allowed)
-    resolved_run_date_utc = resolve_run_date_utc(
-        spark, env, run_date_utc, UPSTREAM_TASK_KEY, CONTROL_PARAM_TABLE
-    )
+    resolved_run_date_utc = resolve_run_date_utc(spark, env, run_date_utc, UPSTREAM_TASK_KEY, CONTROL_PARAM_TABLE)
     logger.info("Using run_date_utc=%s", resolved_run_date_utc)
-    # Resolve table names
-    resolved_input_table = input_table
-    if not resolved_input_table:
-        if not (catalog and schema):
-            raise click.ClickException(
-                "Provide --input-table or both --catalog and --schema to derive input table"
-            )
-        resolved_input_table = f"{catalog}.{schema}.fr24_raw"
 
-    resolved_output_table = output_table
-    if not resolved_output_table:
-        if not (catalog and schema):
-            raise click.ClickException(
-                "Provide --output-table or both --catalog and --schema to derive output table"
-            )
-        resolved_output_table = f"{catalog}.{schema}.fr24_silver"
+    # Resolve table names
+    resolved_input_table = input_table or (f"{catalog}.{schema}.{source_system}_raw" if catalog and schema and source_system else None)
+    resolved_output_table = output_table or (f"{catalog}.{schema}.{source_system}_silver" if catalog and schema and source_system else None)
 
     logger.info("Reading bronze table: %s", resolved_input_table)
     df = spark.read.table(resolved_input_table)
@@ -145,7 +132,14 @@ def run_bronze_to_silver(
     default=None,
     help="Schema to derive default table names",
 )
-def main(env, run_date_utc, input_table, output_table, catalog, schema):
+@click.option(
+    "--source-system",
+    "source_system",
+    required=False,
+    default=None,
+    help="Source system identifier to derive table names",
+)
+def main(env, run_date_utc, input_table, output_table, catalog, schema, source_system):
     run_bronze_to_silver(
         env=env,
         run_date_utc=run_date_utc,
@@ -153,6 +147,7 @@ def main(env, run_date_utc, input_table, output_table, catalog, schema):
         output_table=output_table,
         catalog=catalog,
         schema=schema,
+        source_system=source_system,
     )
 
 
