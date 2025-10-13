@@ -8,8 +8,9 @@ from param_utils import get_param
 
 
 # Allow overriding via environment variables; fall back to defaults
-RAW_BASE_PATH = os.getenv("RAW_BASE_PATH", "/Volumes/mgfi_catalog_test/sandbox/fr24_bronze_vol")
-PROCESSED_BASE_PATH = os.getenv("PROCESSED_BASE_PATH", "/Volumes/mgfi_catalog_test/sandbox")
+MAIN_FILE_PATH = "/Volumes/mgfi_catalog_test/sandbox/"
+RAW_BASE_PATH = os.getenv("RAW_BASE_PATH", MAIN_FILE_PATH + "fr24_bronze_vol")
+PROCESSED_BASE_PATH = os.getenv("PROCESSED_BASE_PATH", MAIN_FILE_PATH)
 
 
 def run_etl(
@@ -23,19 +24,10 @@ def run_etl(
     batch_id: str = None,
     run_date_utc: str = None,
 ) -> None:
-    """Execute the ETL flow for the provided parameters.
-
-    Reads the input file from `raw_base_path/input_filename`, shapes it to the
-    `fr24_raw` table schema, and appends to `output_table`.
-    """
     spark = SparkSession.builder.getOrCreate()
 
-    if not input_filename or str(input_filename).strip() == "":
-        raise ValueError("input_filename must be provided (non-empty)")
-
+    # Extract Data From Filepath (input_filename provided)
     input_path = f"{raw_base_path}/{input_filename}"
-
-    # Reader selection based on file extension (default to CSV with header)
     lower_name = input_filename.lower()
     if lower_name.endswith(".json"):
         df = spark.read.json(input_path)
@@ -44,7 +36,7 @@ def run_etl(
     else:
         df = spark.read.option("header", True).csv(input_path)
 
-    # Directly project the expected FR24 JSON fields
+    # Transform
     df = (
         df.withColumn("event_ts", col("ts"))
           .withColumn("flight_id", col("properties.flightId"))
@@ -74,15 +66,13 @@ def run_etl(
         )
     )
 
-    # Resolve output table from catalog/source_system if not explicitly provided
+    # Load to bronze table
     target_table = output_table if output_table else (
         f"{catalog}.sandbox.{source_system}_raw" if catalog else "mgfi_catalog_test.sandbox.fr24_raw"
     )
-
-    # Append into the managed Delta table
     df_out.write.format("delta").mode("append").saveAsTable(target_table)
 
-    # Expose batch and run date values to downstream tasks when running in Databricks
+    # Passing params downstream
     try:
         from pyspark.dbutils import DBUtils  # type: ignore
         dbutils = DBUtils(spark)
