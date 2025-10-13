@@ -24,3 +24,4 @@ def get_param(
 
     # 3) Fallback to the supplied default
     return default
+

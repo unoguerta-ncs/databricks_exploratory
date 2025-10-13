@@ -1,17 +1,28 @@
 import os
+import sys
+import logging
 import click
 from datetime import date, datetime, timezone
-
+from pathlib import Path
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, to_timestamp, lit, current_timestamp
-from param_utils import get_param
 
+# dynamic sys.path
+sys.path.append('../../')
+from mgfi.common.param_utils import get_param
+
+# Configure basic logging (prints to driver logs / job output)
+if not logging.getLogger().hasHandlers():
+    logging.basicConfig(
+        level=os.getenv("LOG_LEVEL", "INFO"),
+        format="%(asctime)s %(levelname)s %(name)s - %(message)s",
+    )
+logger = logging.getLogger("fr24_etl")
 
 # Allow overriding via environment variables; fall back to defaults
 MAIN_FILE_PATH = "/Volumes/mgfi_catalog_test/sandbox/"
 RAW_BASE_PATH = os.getenv("RAW_BASE_PATH", MAIN_FILE_PATH + "fr24_bronze_vol")
 PROCESSED_BASE_PATH = os.getenv("PROCESSED_BASE_PATH", MAIN_FILE_PATH)
-
 
 def run_etl(
     run_date: str,
@@ -28,15 +39,15 @@ def run_etl(
 
     # Extract Data From Filepath (input_filename provided)
     input_path = f"{raw_base_path}/{input_filename}"
-    lower_name = input_filename.lower()
-    if lower_name.endswith(".json"):
-        df = spark.read.json(input_path)
-    elif lower_name.endswith(".parquet"):
-        df = spark.read.parquet(input_path)
-    else:
-        df = spark.read.option("header", True).csv(input_path)
+    logger.info("EXTRACT start: reading file '%s'", input_path)
+    df = spark.read.json(input_path)
+    logger.info("EXTRACT done: columns=%s", ", ".join(df.columns))
+
 
     # Transform
+    logger.info(
+        "TRANSFORM start: mapping ts->event_ts, properties.flightId->flight_id, properties.callsign->callsign"
+    )
     df = (
         df.withColumn("event_ts", col("ts"))
           .withColumn("flight_id", col("properties.flightId"))
@@ -65,12 +76,15 @@ def run_etl(
             "_ingested_at",
         )
     )
+    logger.info("TRANSFORM done: projected columns: event_ts, flight_id, callsign, source_system, _source_file, _ingested_at")
 
     # Load to bronze table
     target_table = output_table if output_table else (
         f"{catalog}.sandbox.{source_system}_raw" if catalog else "mgfi_catalog_test.sandbox.fr24_raw"
     )
+    logger.info("LOAD start: appending to table '%s'", target_table)
     df_out.write.format("delta").mode("append").saveAsTable(target_table)
+    logger.info("LOAD done: wrote to table '%s'", target_table)
 
     # Passing params downstream
     try:
@@ -78,9 +92,14 @@ def run_etl(
         dbutils = DBUtils(spark)
         dbutils.jobs.taskValues.set(key="batch_id", value=resolved_batch_id)
         dbutils.jobs.taskValues.set(key="run_date_utc", value=resolved_run_date_utc)
+        logger.info(
+            "TASK VALUES set: batch_id=%s, run_date_utc=%s",
+            resolved_batch_id,
+            resolved_run_date_utc,
+        )
     except Exception:
         # Ignore if DBUtils is not available (e.g., local run)
-        pass
+        logger.debug("DBUtils not available; skipping taskValues propagation")
 
 
 @click.command(help="ETL Job Runner")

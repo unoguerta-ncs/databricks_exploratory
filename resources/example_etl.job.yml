@@ -1,7 +1,7 @@
 resources:
   jobs:
-    example_etl:
-      name: "Example ETL Job (with control table)"
+    fr24_bronze_to_silver:
+      name: "FR24 Bronze to Silver"
       parameters:
         - name: run_date
           default: ""
@@ -13,7 +13,7 @@ resources:
       tasks:
         - task_key: etl_task
           spark_python_task:
-            python_file: ../src/mgfi/fr24/etl.py
+            python_file: ../src/mgfi/fr24/fr24_hourly.py
             parameters:
               - "--run-date"
               - "{{job.parameters.run_date}}"
