@@ -14,7 +14,7 @@ def get_param(
 
     # 2) Otherwise try fetch from the shared control table (best-effort)
     try:
-        df = spark.read.table("workspace.default.control_parameters")
+        df = spark.read.table("mgfi_catalog_test.sandbox.control_parameters")
         row = df.filter((df.env == env) & (df.key == key)).select("value").first()
         if row:
             return row.value

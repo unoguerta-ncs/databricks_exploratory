@@ -13,7 +13,7 @@ resources:
       tasks:
         - task_key: etl_task
           spark_python_task:
-            python_file: ../src/etl.py
+            python_file: ../src/mgfi/fr24/etl.py
             parameters:
               - "--run-date"
               - "{{job.parameters.run_date}}"
@@ -22,14 +22,6 @@ resources:
               - "--input-filename"
               - "{{job.parameters.input_filename}}"
           environment_key: serverless
-
-        - task_key: etl_notebook
-          notebook_task:
-            notebook_path: ../src/etl_notebook.ipynb
-            base_parameters:
-              run_date: "{{job.parameters.run_date}}"
-              env: "{{job.parameters.env}}"
-              input_filename: "{{job.parameters.input_filename}}" 
 
       environments:
         - environment_key: serverless
