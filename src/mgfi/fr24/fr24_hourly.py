@@ -56,8 +56,8 @@ def run_etl(
     )
 
     # Derive batch/run metadata defaults
-    resolved_batch_id = batch_id or None
-    resolved_run_date_utc = run_date_utc or None
+    resolved_batch_id = batch_id or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    resolved_run_date_utc = run_date_utc or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
 
     # Cast/derive columns to match target schema
     df_out = (

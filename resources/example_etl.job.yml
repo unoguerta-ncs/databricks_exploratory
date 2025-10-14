@@ -7,15 +7,16 @@ resources:
       schedule:
         quartz_cron_expression: "0 5 * * * ?"
         timezone_id: "UTC"
+        pause_status: "UNPAUSED"
 
-      job_clusters:
-        - job_cluster_key: std_job_cluster
-          new_cluster:
-            spark_version: "14.3.x-scala2.12"
-            node_type_id: "i3.xlarge"
-            num_workers: 2
-            data_security_mode: "SINGLE_USER"
-            autotermination_minutes: 30
+      # job_clusters:
+      #   - job_cluster_key: std_job_cluster
+      #     new_cluster:
+      #       spark_version: "14.3.x-scala2.12"
+      #       node_type_id: "i3.xlarge"
+      #       num_workers: 2
+      #       data_security_mode: "SINGLE_USER"
+      #       autotermination_minutes: 30
 
       parameters:
         - name: run_date
@@ -36,7 +37,7 @@ resources:
           default: "/Volumes/mgfi_catalog_test/sandbox/fr24_bronze_vol"
 
       tasks:
-        - task_key: etl_task
+        - task_key: fr24_hourly
           spark_python_task:
             python_file: ../src/mgfi/fr24/fr24_hourly.py
             parameters:
@@ -54,14 +55,15 @@ resources:
               - "{{job.parameters.schema}}"
               - "--raw-base-path"
               - "{{job.parameters.raw_base_path}}"
-          job_cluster_key: std_job_cluster
+          # job_cluster_key: std_job_cluster
+          existing_cluster_id: "1009-031438-chqdgmi8"
           max_retries: 1
           min_retry_interval_millis: 10000
           timeout_seconds: 0
 
-        - task_key: b2s_task
+        - task_key: fr24_bronze_to_silver
           depends_on:
-            - task_key: etl_task
+            - task_key: fr24_hourly
           spark_python_task:
             python_file: ../src/mgfi/fr24_b2s/fr24_bronze_to_silver.py
             parameters:
@@ -75,7 +77,8 @@ resources:
               - "{{job.parameters.catalog}}"
               - "--schema"
               - "{{job.parameters.schema}}"
-          job_cluster_key: std_job_cluster
+          # job_cluster_key: std_job_cluster
+          existing_cluster_id: "1009-031438-chqdgmi8"
           max_retries: 1
           min_retry_interval_millis: 10000
           timeout_seconds: 0
