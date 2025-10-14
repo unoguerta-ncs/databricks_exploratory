@@ -156,13 +156,6 @@ def run_etl(
     help="Schema to use when deriving output table name",
 )
 @click.option(
-    "--source-system",
-    "source_system",
-    required=False,
-    default=None,
-    help="Source system identifier used in target table and column",
-)
-@click.option(
     "--raw-base-path",
     "raw_base_path",
     required=False,
@@ -221,5 +214,13 @@ def main(run_date, env, input_filename, output_table, source_system, catalog, sc
 
 
 if __name__ == "__main__":
-    # Avoid Click calling sys.exit (raises SystemExit) in Databricks runners
+    # Prevent Click from exiting the Python process in Databricks
     main(standalone_mode=False)
+
+
+def fr24_hourly_task(*args, **kwargs):
+    """Invoke the Click command without triggering SystemExit.
+
+    This wrapper is used as the python_wheel_task entry point.
+    """
+    return main.main(*args, **kwargs, standalone_mode=False)

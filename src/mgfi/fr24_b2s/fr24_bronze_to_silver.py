@@ -152,5 +152,13 @@ def main(env, run_date_utc, input_table, output_table, catalog, schema, source_s
 
 
 if __name__ == "__main__":
-    # Avoid Click calling sys.exit in Databricks jobs
+    # Prevent Click from exiting the Python process in Databricks
     main(standalone_mode=False)
+
+
+def fr24_bronze_to_silver_task(*args, **kwargs):
+    """Invoke the Click command without triggering SystemExit.
+
+    This wrapper is used as the python_wheel_task entry point.
+    """
+    return main.main(*args, **kwargs, standalone_mode=False)

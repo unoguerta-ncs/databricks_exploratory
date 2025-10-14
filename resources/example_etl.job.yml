@@ -38,8 +38,9 @@ resources:
 
       tasks:
         - task_key: fr24_hourly
-          spark_python_task:
-            python_file: ../src/mgfi/fr24/fr24_hourly.py
+          python_wheel_task:
+            package_name: "mgfi-fr24-etl"
+            entry_point: "fr24_hourly"
             parameters:
               - "--run-date-utc"
               - "{{job.parameters.run_date_utc}}"
@@ -55,6 +56,8 @@ resources:
               - "{{job.parameters.schema}}"
               - "--raw-base-path"
               - "{{job.parameters.raw_base_path}}"
+          libraries:
+            - whl: "../dist/mgfi_fr24_etl-0.1.1-py3-none-any.whl"
           # job_cluster_key: std_job_cluster
           existing_cluster_id: "1009-031438-chqdgmi8"
           max_retries: 1
@@ -64,8 +67,9 @@ resources:
         - task_key: fr24_bronze_to_silver
           depends_on:
             - task_key: fr24_hourly
-          spark_python_task:
-            python_file: ../src/mgfi/fr24_b2s/fr24_bronze_to_silver.py
+          python_wheel_task:
+            package_name: "mgfi-fr24-etl"
+            entry_point: "fr24_bronze_to_silver"
             parameters:
               - "--env"
               - "{{job.parameters.env}}"
@@ -77,6 +81,8 @@ resources:
               - "{{job.parameters.catalog}}"
               - "--schema"
               - "{{job.parameters.schema}}"
+          libraries:
+            - whl: "../dist/mgfi_fr24_etl-0.1.1-py3-none-any.whl"
           # job_cluster_key: std_job_cluster
           existing_cluster_id: "1009-031438-chqdgmi8"
           max_retries: 1

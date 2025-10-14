@@ -1,6 +1,8 @@
-# Ignore local Databricks project scaffolding
-my_project/
+# Python build artifacts (created by `python -m build`)
+dist/
+build/
+*.egg-info/
 
-# Ignore temporary scratch file from IDE
-tmp_show
-
+# Common virtual envs (optional; ignore if present)
+.venv/
+venv/
