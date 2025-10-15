@@ -1,7 +1,7 @@
 import os
 import sys
 import logging
-import click
+import argparse
 from typing import Optional
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, to_date, lit, to_utc_timestamp, upper, trim
@@ -85,80 +85,84 @@ def run_bronze_to_silver(
     logger.info("Write complete: %s", resolved_output_table)
 
 
-@click.command(help="FR24 Bronze-to-Silver filter by run_date_utc")
-@click.option(
-    "--env",
-    "env",
-    required=False,
-    default=os.getenv("ENV", "dev"),
-    show_default=True,
-    help="Environment key used for control parameter lookups",
-)
-@click.option(
-    "--run-date-utc",
-    "run_date_utc",
-    required=False,
-    default=None,
-    help=(
-        "Run date in UTC (YYYY-MM-DD). If omitted, attempts to read from upstream task values "
-        "or control parameters. No built-in default."
-    ),
-)
-@click.option(
-    "--input-table",
-    "input_table",
-    required=False,
-    default=None,
-    help="Fully-qualified bronze Delta table to read from. If omitted, requires --catalog and --schema",
-)
-@click.option(
-    "--output-table",
-    "output_table",
-    required=False,
-    default=None,
-    help="Fully-qualified silver Delta table to append to. If omitted, requires --catalog and --schema",
-)
-@click.option(
-    "--catalog",
-    "catalog",
-    required=False,
-    default=None,
-    help="Unity Catalog to derive default table names",
-)
-@click.option(
-    "--schema",
-    "schema",
-    required=False,
-    default=None,
-    help="Schema to derive default table names",
-)
-@click.option(
-    "--source-system",
-    "source_system",
-    required=False,
-    default=None,
-    help="Source system identifier to derive table names",
-)
-def main(env, run_date_utc, input_table, output_table, catalog, schema, source_system):
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="FR24 Bronze-to-Silver filter by run_date_utc"
+    )
+    parser.add_argument(
+        "--env",
+        dest="env",
+        required=False,
+        default=os.getenv("ENV", "dev"),
+        help="Environment key used for control parameter lookups",
+    )
+    parser.add_argument(
+        "--run-date-utc",
+        dest="run_date_utc",
+        required=False,
+        default=None,
+        help=(
+            "Run date in UTC (YYYY-MM-DD). If omitted, attempts to read from upstream task values "
+            "or control parameters. No built-in default."
+        ),
+    )
+    parser.add_argument(
+        "--input-table",
+        dest="input_table",
+        required=False,
+        default=None,
+        help="Fully-qualified bronze Delta table to read from. If omitted, requires --catalog and --schema",
+    )
+    parser.add_argument(
+        "--output-table",
+        dest="output_table",
+        required=False,
+        default=None,
+        help="Fully-qualified silver Delta table to append to. If omitted, requires --catalog and --schema",
+    )
+    parser.add_argument(
+        "--catalog",
+        dest="catalog",
+        required=False,
+        default=None,
+        help="Unity Catalog to derive default table names",
+    )
+    parser.add_argument(
+        "--schema",
+        dest="schema",
+        required=False,
+        default=None,
+        help="Schema to derive default table names",
+    )
+    parser.add_argument(
+        "--source-system",
+        dest="source_system",
+        required=False,
+        default=None,
+        help="Source system identifier to derive table names",
+    )
+    return parser
+
+
+def main(argv: Optional[list[str]] = None) -> None:
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+
     run_bronze_to_silver(
-        env=env,
-        run_date_utc=run_date_utc,
-        input_table=input_table,
-        output_table=output_table,
-        catalog=catalog,
-        schema=schema,
-        source_system=source_system,
+        env=args.env,
+        run_date_utc=args.run_date_utc,
+        input_table=args.input_table,
+        output_table=args.output_table,
+        catalog=args.catalog,
+        schema=args.schema,
+        source_system=args.source_system,
     )
 
 
 if __name__ == "__main__":
-    # Prevent Click from exiting the Python process in Databricks
-    main(standalone_mode=False)
+    main()
 
 
-def fr24_bronze_to_silver_task(*args, **kwargs):
-    """Invoke the Click command without triggering SystemExit.
-
-    This wrapper is used as the python_wheel_task entry point.
-    """
-    return main.main(*args, **kwargs, standalone_mode=False)
+def fr24_bronze_to_silver_task() -> None:
+    """Console entry point wrapper that delegates to argparse-based main()."""
+    main()

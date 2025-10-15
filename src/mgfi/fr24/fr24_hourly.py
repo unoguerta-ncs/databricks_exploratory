@@ -1,7 +1,7 @@
 import os
 import sys
 import logging
-import click
+import argparse
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -25,7 +25,7 @@ logger = logging.getLogger("fr24_etl")
 CONTROL_PARAM_TABLE = os.getenv("CONTROL_PARAM_TABLE", "mgfi_catalog_test.sandbox.control_parameters")
 
 def run_etl(
-    run_date: str,
+    run_date_utc: Optional[str] = None,
     raw_base_path: Optional[str] = None,
     processed_base_path: Optional[str] = None,
     input_filename: Optional[str] = None,
@@ -34,7 +34,7 @@ def run_etl(
     catalog: Optional[str] = None,
     schema: Optional[str] = None,
     batch_id: Optional[str] = None,
-    run_date_utc: Optional[str] = None,
+    # run_date_utc: Optional[str] = None,
 ) -> None:
     spark = SparkSession.builder.getOrCreate()
 
@@ -103,124 +103,125 @@ def run_etl(
         logger.debug("DBUtils not available; skipping taskValues propagation")
 
 
-@click.command(help="ETL Job Runner")
-@click.option(
-    "--run-date",
-    "run_date",
-    required=False,
-    default=None,
-    help="Run date to process (YYYY-MM-DD). Defaults to control table or today's date",
-)
-@click.option(
-    "--env",
-    "env",
-    required=False,
-    default=os.getenv("ENV", "dev"),
-    show_default=True,
-    help="Environment key (default from ENV var or 'dev')",
-)
-@click.option(
-    "--input-filename",
-    "input_filename",
-    required=False,
-    default=None,
-    help="Name of the input file inside the raw base path (default: input.csv)",
-)
-@click.option(
-    "--output-table",
-    "output_table",
-    required=False,
-    default=None,
-    help="Fully-qualified Delta table to append to. If omitted, requires --catalog and --schema",
-)
-@click.option(
-    "--source-system",
-    "source_system",
-    required=False,
-    default="fr24",
-    show_default=True,
-    help="Source system label to populate in the table",
-)
-@click.option(
-    "--catalog",
-    "catalog",
-    required=False,
-    default=None,
-    help="Unity Catalog to use when deriving output table name",
-)
-@click.option(
-    "--schema",
-    "schema",
-    required=False,
-    default=None,
-    help="Schema to use when deriving output table name",
-)
-@click.option(
-    "--raw-base-path",
-    "raw_base_path",
-    required=False,
-    default=None,
-    help="Base path containing the input files (e.g. /Volumes/<catalog>/<schema>/fr24_bronze_vol)",
-)
-@click.option(
-    "--batch-id",
-    "batch_id",
-    required=False,
-    default=None,
-    help="Optional batch identifier to propagate via task values",
-)
-@click.option(
-    "--run-date-utc",
-    "run_date_utc",
-    required=False,
-    default=None,
-    help="Optional run date in UTC (YYYY-MM-DD) to propagate via task values",
-)
-def main(run_date, env, input_filename, output_table, source_system, catalog, schema, raw_base_path, batch_id, run_date_utc):
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="ETL Job Runner")
+    parser.add_argument(
+        "--run-date",
+        dest="run_date",
+        required=False,
+        default=None,
+        help="Run date to process (YYYY-MM-DD). Defaults to control table or today's date",
+    )
+    parser.add_argument(
+        "--env",
+        dest="env",
+        required=False,
+        default=os.getenv("ENV", "dev"),
+        help="Environment key (default from ENV var or 'dev')",
+    )
+    parser.add_argument(
+        "--input-filename",
+        dest="input_filename",
+        required=False,
+        default=None,
+        help="Name of the input file inside the raw base path (default: input.csv)",
+    )
+    parser.add_argument(
+        "--output-table",
+        dest="output_table",
+        required=False,
+        default=None,
+        help="Fully-qualified Delta table to append to. If omitted, requires --catalog and --schema",
+    )
+    parser.add_argument(
+        "--source-system",
+        dest="source_system",
+        required=False,
+        default="fr24",
+        help="Source system label to populate in the table",
+    )
+    parser.add_argument(
+        "--catalog",
+        dest="catalog",
+        required=False,
+        default=None,
+        help="Unity Catalog to use when deriving output table name",
+    )
+    parser.add_argument(
+        "--schema",
+        dest="schema",
+        required=False,
+        default=None,
+        help="Schema to use when deriving output table name",
+    )
+    parser.add_argument(
+        "--raw-base-path",
+        dest="raw_base_path",
+        required=False,
+        default=None,
+        help="Base path containing the input files (e.g. /Volumes/<catalog>/<schema>/fr24_bronze_vol)",
+    )
+    parser.add_argument(
+        "--batch-id",
+        dest="batch_id",
+        required=False,
+        default=None,
+        help="Optional batch identifier to propagate via task values",
+    )
+    parser.add_argument(
+        "--run-date-utc",
+        dest="run_date_utc",
+        required=False,
+        default=None,
+        help="Optional run date in UTC (YYYY-MM-DD) to propagate via task values",
+    )
+    return parser
+
+
+def main(argv: Optional[list[str]] = None) -> None:
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+
     spark = SparkSession.builder.getOrCreate()
 
     # Resolve run_date and input filename using priority: explicit > control table > default
-    run_date = get_param(
+    run_date_utc = get_param(
         spark,
-        env=env,
-        key="run_date",
-        explicit=run_date if run_date else None,
+        env=args.env,
+        key="run_date_utc",
+        explicit=args.run_date_utc if args.run_date_utc else None,
         default=None,
         control_table=CONTROL_PARAM_TABLE,
     )
 
     input_filename = get_param(
         spark,
-        env=env,
+        env=args.env,
         key="input_filename",
-        explicit=input_filename if input_filename else None,
+        explicit=args.input_filename if args.input_filename else None,
         default=None,
         control_table=CONTROL_PARAM_TABLE,
     )
 
     # Use environment-configured base paths (or defaults) and write to the table
     run_etl(
-        run_date,
-        raw_base_path=raw_base_path,
+        run_date_utc=run_date_utc,
+        raw_base_path=args.raw_base_path,
         processed_base_path=None,
         input_filename=input_filename,
-        output_table=output_table,
-        source_system=source_system,
-        catalog=catalog,
-        schema=schema,
-        batch_id=batch_id,
-        run_date_utc=run_date_utc,
+        output_table=args.output_table,
+        source_system=args.source_system,
+        catalog=args.catalog,
+        schema=args.schema,
+        batch_id=args.batch_id,
+        # run_date_utc=args.run_date_utc,
     )
 
 
 if __name__ == "__main__":
-    # Prevent Click from exiting the Python process in Databricks
-    main(standalone_mode=False)
+    main()
 
 
-def fr24_hourly_task(*args, **kwargs):
-    """Invoke the Click command without triggering SystemExit.
-
-    This wrapper is used as the python_wheel_task entry point.
-    """
-    return main.main(*args, **kwargs, standalone_mode=False)
+def fr24_hourly_task() -> None:
+    """Console entry point wrapper that delegates to argparse-based main()."""
+    main()
