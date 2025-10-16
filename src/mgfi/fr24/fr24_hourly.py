@@ -21,8 +21,8 @@ if not logging.getLogger().hasHandlers():
 logger = logging.getLogger("fr24_etl")
 
 # No hardcoded defaults here; paths, catalog, and schema are provided via job/CLI
-# Control parameter table location for get_param lookups
-CONTROL_PARAM_TABLE = os.getenv("CONTROL_PARAM_TABLE", "mgfi_catalog_test.sandbox.control_parameters")
+# Control parameter table location for get_param lookups (resolved at runtime)
+DEFAULT_CONTROL_PARAM_TABLE = os.getenv("CONTROL_PARAM_TABLE", "")
 
 def run_etl(
     run_date_utc: Optional[str] = None,
@@ -162,6 +162,13 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Base path containing the input files (e.g. /Volumes/<catalog>/<schema>/fr24_bronze_vol)",
     )
     parser.add_argument(
+        "--control-param-table",
+        dest="control_param_table",
+        required=False,
+        default=None,
+        help="Fully-qualified control parameter table used for fallback lookups",
+    )
+    parser.add_argument(
         "--batch-id",
         dest="batch_id",
         required=False,
@@ -183,6 +190,7 @@ def main(argv: Optional[list[str]] = None) -> None:
     args = parser.parse_args(argv)
 
     spark = SparkSession.builder.getOrCreate()
+    control_param_table = args.control_param_table or DEFAULT_CONTROL_PARAM_TABLE
 
     # Resolve run_date and input filename using priority: explicit > control table > default
     run_date_utc = get_param(
@@ -191,7 +199,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         key="run_date_utc",
         explicit=args.run_date_utc if args.run_date_utc else None,
         default=None,
-        control_table=CONTROL_PARAM_TABLE,
+        control_table=control_param_table,
     )
 
     input_filename = get_param(
@@ -200,7 +208,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         key="input_filename",
         explicit=args.input_filename if args.input_filename else None,
         default=None,
-        control_table=CONTROL_PARAM_TABLE,
+        control_table=control_param_table,
     )
 
     # Use environment-configured base paths (or defaults) and write to the table

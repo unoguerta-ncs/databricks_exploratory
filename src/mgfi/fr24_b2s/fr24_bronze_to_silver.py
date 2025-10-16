@@ -20,9 +20,9 @@ if not logging.getLogger().hasHandlers():
 logger = logging.getLogger("fr24_b2s")
 
 
-UPSTREAM_TASK_KEY = os.getenv("UPSTREAM_TASK_KEY", "etl_task")
-# Control parameter table location for get_param lookups used by resolver
-CONTROL_PARAM_TABLE = os.getenv("CONTROL_PARAM_TABLE", "mgfi_catalog_test.sandbox.control_parameters")
+UPSTREAM_TASK_KEY = os.getenv("UPSTREAM_TASK_KEY", "fr24_hourly")
+# Control parameter table location for get_param lookups used by resolver (resolved at runtime)
+DEFAULT_CONTROL_PARAM_TABLE = os.getenv("CONTROL_PARAM_TABLE", "")
 
 
 def run_bronze_to_silver(
@@ -33,11 +33,15 @@ def run_bronze_to_silver(
     catalog: Optional[str] = None,
     schema: Optional[str] = None,
     source_system: Optional[str] = None,
+    control_param_table: Optional[str] = None,
 ):
     spark = SparkSession.builder.getOrCreate()
+    control_table = control_param_table or DEFAULT_CONTROL_PARAM_TABLE
 
     # Resolve run_date_utc (no default allowed)
-    resolved_run_date_utc = resolve_run_date_utc(spark, env, run_date_utc, UPSTREAM_TASK_KEY, CONTROL_PARAM_TABLE)
+    resolved_run_date_utc = resolve_run_date_utc(
+        spark, env, run_date_utc, UPSTREAM_TASK_KEY, control_table
+    )
     logger.info("Using run_date_utc=%s", resolved_run_date_utc)
 
     # Resolve table names
@@ -141,12 +145,20 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Source system identifier to derive table names",
     )
+    parser.add_argument(
+        "--control-param-table",
+        dest="control_param_table",
+        required=False,
+        default=None,
+        help="Fully-qualified control parameter table used for fallback lookups",
+    )
     return parser
 
 
 def main(argv: Optional[list[str]] = None) -> None:
     parser = _build_parser()
     args = parser.parse_args(argv)
+    control_param_table = args.control_param_table or DEFAULT_CONTROL_PARAM_TABLE
 
     run_bronze_to_silver(
         env=args.env,
@@ -156,6 +168,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         catalog=args.catalog,
         schema=args.schema,
         source_system=args.source_system,
+        control_param_table=control_param_table,
     )
 
 

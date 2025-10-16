@@ -35,6 +35,8 @@ resources:
           default: "sandbox"
         - name: raw_base_path
           default: "/Volumes/mgfi_catalog_test/sandbox/fr24_bronze_vol"
+        - name: control_param_table
+          default: "mgfi_catalog_test.sandbox.control_parameters"
 
       tasks:
         - task_key: fr24_hourly
@@ -56,6 +58,8 @@ resources:
               - "{{job.parameters.schema}}"
               - "--raw-base-path"
               - "{{job.parameters.raw_base_path}}"
+              - "--control-param-table"
+              - "{{job.parameters.control_param_table}}"
           libraries:
             - whl: "../dist/mgfi_fr24_etl-0.1.1-py3-none-any.whl"
           # job_cluster_key: std_job_cluster
@@ -81,6 +85,8 @@ resources:
               - "{{job.parameters.catalog}}"
               - "--schema"
               - "{{job.parameters.schema}}"
+              - "--control-param-table"
+              - "{{job.parameters.control_param_table}}"
           libraries:
             - whl: "../dist/mgfi_fr24_etl-0.1.1-py3-none-any.whl"
           # job_cluster_key: std_job_cluster
