@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mgfi-fr24-etl"
-version = "0.1.1"
+version = "0.1.3"
 description = "FR24 ETL tasks packaged for Databricks wheel runs"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -16,6 +16,6 @@ dependencies = [
 where = ["src"]
 
 [project.scripts]
-# Entrypoints for Databricks python_wheel_task using Click wrappers (no SystemExit)
-fr24_hourly = "mgfi.fr24.fr24_hourly:fr24_hourly_task"
-fr24_bronze_to_silver = "mgfi.fr24_b2s.fr24_bronze_to_silver:fr24_bronze_to_silver_task"
+# Entrypoints for Databricks python_wheel_task; invoke module main() directly
+fr24_hourly = "mgfi.fr24.fr24_hourly:main"
+fr24_bronze_to_silver = "mgfi.fr24_b2s.fr24_bronze_to_silver:main"

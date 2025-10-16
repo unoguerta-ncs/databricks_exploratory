@@ -1,0 +1,3 @@
+{"ts":"2025-10-06T13:05:12Z","properties":{"flightId":1339480815,"callsign":"TLM644","origin":"SIN","destination":"KUL","registration":"9V-SME","model":"A320","lat":1.359,"lon":103.989,"alt":35000}}
+{"ts":"2025-10-06T13:05:22Z","properties":{"flightId":1339480815,"callsign":"TLM644","origin":"SIN","destination":"KUL","registration":"9V-SME","model":"A320","lat":1.412,"lon":104.022,"alt":35500}}
+{"ts":"2025-10-06T13:05:33Z","properties":{"flightId":987650321,"callsign":"SIA318","origin":"SIN","destination":"BKK","registration":"9V-SKB","model":"A350","lat":1.354,"lon":103.993,"alt":37000}}

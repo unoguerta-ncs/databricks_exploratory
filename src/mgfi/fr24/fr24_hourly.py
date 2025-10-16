@@ -2,17 +2,17 @@ import os
 import sys
 import logging
 import argparse
-from datetime import date, datetime, timezone
-from pathlib import Path
+from datetime import datetime, timezone
 from typing import Optional
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, to_timestamp, lit, current_timestamp
+from pyspark.sql.functions import (
+    col, lit, to_timestamp, current_timestamp, struct
+)
 
 # dynamic sys.path
-sys.path.append('../../')
+sys.path.append("../../")
 from mgfi.common.param_utils import get_param
 
-# Configure basic logging (prints to driver logs / job output)
 if not logging.getLogger().hasHandlers():
     logging.basicConfig(
         level=os.getenv("LOG_LEVEL", "INFO"),
@@ -20,9 +20,8 @@ if not logging.getLogger().hasHandlers():
     )
 logger = logging.getLogger("fr24_etl")
 
-# No hardcoded defaults here; paths, catalog, and schema are provided via job/CLI
-# Control parameter table location for get_param lookups (resolved at runtime)
 DEFAULT_CONTROL_PARAM_TABLE = os.getenv("CONTROL_PARAM_TABLE", "")
+
 
 def run_etl(
     run_date_utc: Optional[str] = None,
@@ -34,72 +33,64 @@ def run_etl(
     catalog: Optional[str] = None,
     schema: Optional[str] = None,
     batch_id: Optional[str] = None,
-    # run_date_utc: Optional[str] = None,
 ) -> None:
     spark = SparkSession.builder.getOrCreate()
 
-    # Extract Data From Filepath (input_filename provided)
+    # === Extract ===
     input_path = f"{raw_base_path.rstrip('/')}/{input_filename.lstrip('/')}"
     logger.info("EXTRACT start: reading file '%s'", input_path)
     df = spark.read.json(input_path)
-    logger.info("EXTRACT done: columns=%s", ", ".join(df.columns))
+    logger.info("EXTRACT done: total rows=%d", df.count())
 
-
-    # Transform
-    logger.info(
-        "TRANSFORM start: mapping ts->event_ts, properties.flightId->flight_id, properties.callsign->callsign"
-    )
-    df = (
-        df.withColumn("event_ts", col("ts"))
-          .withColumn("flight_id", col("properties.flightId"))
-          .withColumn("callsign", col("properties.callsign"))
-    )
-
-    # Derive batch/run metadata defaults
-    resolved_batch_id = batch_id or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    resolved_run_date_utc = run_date_utc or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-
-    # Cast/derive columns to match target schema
-    df_out = (
-        df.withColumn("event_ts", to_timestamp(col("event_ts"), "yyyy-MM-dd'T'HH:mm:ssX"))
-        .withColumn("flight_id", col("flight_id").cast("long"))
-        .withColumn("callsign", col("callsign").cast("string"))
+    # === Transform ===
+    logger.info("TRANSFORM start: normalizing FR24 fields")
+    df_tr = (
+        df
+        .withColumn("event_ts", to_timestamp(col("ts")))
+        .withColumn("flight_id", col("properties.flightId").cast("long"))
+        .withColumn("callsign", col("properties.callsign"))
+        .withColumn("origin", col("properties.origin"))
+        .withColumn("destination", col("properties.destination"))
+        .withColumn("registration", col("properties.registration"))
+        .withColumn("model", col("properties.model"))
+        .withColumn("latitude", col("properties.lat").cast("double"))
+        .withColumn("longitude", col("properties.lon").cast("double"))
+        .withColumn("altitude", col("properties.alt").cast("integer"))
         .withColumn("source_system", lit(source_system))
-        # Unity Catalog does not allow input_file_name(); capture provided path instead
         .withColumn("_source_file", lit(input_path))
         .withColumn("_ingested_at", current_timestamp())
         .select(
             "event_ts",
             "flight_id",
             "callsign",
+            "origin",
+            "destination",
+            "registration",
+            "model",
+            "latitude",
+            "longitude",
+            "altitude",
             "source_system",
             "_source_file",
             "_ingested_at",
         )
     )
-    logger.info("TRANSFORM done: projected columns: event_ts, flight_id, callsign, source_system, _source_file, _ingested_at")
+    logger.info("TRANSFORM done: normalized schema applied")
 
-    # Load to bronze table
-    target_table = output_table or (
-        f"{catalog}.{schema}.{source_system}_raw" if catalog and schema and source_system else None
-    )
-    logger.info("LOAD start: appending to table '%s'", target_table)
-    df_out.write.format("delta").mode("append").saveAsTable(target_table)
+    # === Load ===
+    target_table = output_table or f"{catalog}.{schema}.{source_system}_raw_adv"
+    logger.info("LOAD start: writing to table '%s'", target_table)
+    df_tr.write.format("delta").mode("append").saveAsTable(target_table)
     logger.info("LOAD done: wrote to table '%s'", target_table)
 
-    # Passing params downstream
+    # Set task values (Databricks chaining)
     try:
-        from pyspark.dbutils import DBUtils  # type: ignore
+        from pyspark.dbutils import DBUtils
         dbutils = DBUtils(spark)
+        resolved_batch_id = batch_id or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         dbutils.jobs.taskValues.set(key="batch_id", value=resolved_batch_id)
-        dbutils.jobs.taskValues.set(key="run_date_utc", value=resolved_run_date_utc)
-        logger.info(
-            "TASK VALUES set: batch_id=%s, run_date_utc=%s",
-            resolved_batch_id,
-            resolved_run_date_utc,
-        )
+        dbutils.jobs.taskValues.set(key="run_date_utc", value=run_date_utc)
     except Exception:
-        # Ignore if DBUtils is not available (e.g., local run)
         logger.debug("DBUtils not available; skipping taskValues propagation")
 
 
@@ -185,10 +176,9 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Optional[list[str]] = None) -> None:
+def main(argv=None):
     parser = _build_parser()
     args = parser.parse_args(argv)
-
     spark = SparkSession.builder.getOrCreate()
     control_param_table = args.control_param_table or DEFAULT_CONTROL_PARAM_TABLE
 
@@ -211,24 +201,20 @@ def main(argv: Optional[list[str]] = None) -> None:
         control_table=control_param_table,
     )
 
-    # Use environment-configured base paths (or defaults) and write to the table
     run_etl(
-        run_date_utc=run_date_utc,
+        run_date_utc= run_date_utc,
         raw_base_path=args.raw_base_path,
-        processed_base_path=None,
-        input_filename=input_filename,
-        output_table=args.output_table,
+        input_filename= input_filename,
+        output_table=args.output_table.strip() if args.output_table else None,
         source_system=args.source_system,
         catalog=args.catalog,
         schema=args.schema,
         batch_id=args.batch_id,
-        # run_date_utc=args.run_date_utc,
     )
 
 
 if __name__ == "__main__":
     main()
-
 
 def fr24_hourly_task() -> None:
     """Console entry point wrapper that delegates to argparse-based main()."""

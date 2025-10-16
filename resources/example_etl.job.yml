@@ -33,6 +33,10 @@ resources:
           default: "mgfi_catalog_test"
         - name: schema
           default: "sandbox"
+        - name: bronze_output_table
+          default: ""
+        - name: silver_output_table
+          default: ""
         - name: raw_base_path
           default: "/Volumes/mgfi_catalog_test/sandbox/fr24_bronze_vol"
         - name: control_param_table
@@ -56,12 +60,14 @@ resources:
               - "{{job.parameters.catalog}}"
               - "--schema"
               - "{{job.parameters.schema}}"
+              - "--output-table"
+              - "{{job.parameters.bronze_output_table}}"
               - "--raw-base-path"
               - "{{job.parameters.raw_base_path}}"
               - "--control-param-table"
               - "{{job.parameters.control_param_table}}"
           libraries:
-            - whl: "../dist/mgfi_fr24_etl-0.1.1-py3-none-any.whl"
+            - whl: "../dist/mgfi_fr24_etl-0.1.3-py3-none-any.whl"
           # job_cluster_key: std_job_cluster
           existing_cluster_id: "1009-031438-chqdgmi8"
           max_retries: 1
@@ -85,10 +91,14 @@ resources:
               - "{{job.parameters.catalog}}"
               - "--schema"
               - "{{job.parameters.schema}}"
+              - "--input-table"
+              - "{{job.parameters.bronze_output_table}}"
+              - "--output-table"
+              - "{{job.parameters.silver_output_table}}"
               - "--control-param-table"
               - "{{job.parameters.control_param_table}}"
           libraries:
-            - whl: "../dist/mgfi_fr24_etl-0.1.1-py3-none-any.whl"
+            - whl: "../dist/mgfi_fr24_etl-0.1.3-py3-none-any.whl"
           # job_cluster_key: std_job_cluster
           existing_cluster_id: "1009-031438-chqdgmi8"
           max_retries: 1
