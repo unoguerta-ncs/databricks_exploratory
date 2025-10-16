@@ -1,0 +1,4 @@
+{"ts":"2025-10-07T02:15:05Z","properties":{"flightId":445512390,"callsign":"QFA26","origin":"SIN","destination":"SYD","registration":"VH-ZNK","model":"A350","lat":1.360,"lon":104.012,"alt":38000}}
+{"ts":"2025-10-07T02:25:05Z","properties":{"flightId":445512390,"callsign":"QFA26","origin":"SIN","destination":"SYD","registration":"VH-ZNK","model":"A350","lat":-3.215,"lon":106.755,"alt":38250}}
+{"ts":"2025-10-07T04:40:18Z","properties":{"flightId":772301845,"callsign":"SIA745","origin":"SIN","destination":"NRT","registration":"9V-SCR","model":"B777","lat":6.212,"lon":120.511,"alt":41000}}
+{"ts":"2025-10-07T04:54:52Z","properties":{"flightId":993450118,"callsign":"CX714","origin":"SIN","destination":"HKG","registration":"B-LRE","model":"A330","lat":9.603,"lon":114.982,"alt":36000}}
